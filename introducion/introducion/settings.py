@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'authentication',
     'resource',
+    'maintenance',
 ]
 
 AUTH_USER_MODEL = 'authentication.CustomUser'
