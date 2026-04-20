@@ -1,49 +1,63 @@
 
-# Gestión de Recursos — API REST
+# Gestión de Recursos
 
-API para la gestión de recursos físicos, digitales y espacios dentro de una organización. Permite a administradores crear y asignar recursos, y a empleados consultar los que tienen asignados.
+Sistema completo de gestión de recursos físicos, digitales y espacios dentro de una organización. Incluye un **backend** en Django REST Framework y un **frontend** en React + Vite.
 
 ---
 
-## Tecnologías
+## Stack tecnológico
 
-- Python 3.x
-- Django 6.0.2
-- Django REST Framework 3.16.1
-- Simple JWT 5.5.1
+### Backend (`introducion/`)
+- Python 3.x · Django 6.0.2 · Django REST Framework 3.16.1
+- Simple JWT 5.5.1 (autenticación JWT)
 - drf-spectacular 0.29.0 (Swagger/OpenAPI)
 - SQLite (desarrollo)
 
+### Frontend (`mi-app/`)
+- React 19 · Vite 8 · TypeScript · Tailwind CSS 4
+- Zustand (estado global) · Axios (cliente HTTP) · React Router v6
+
 ---
 
-## Instalación
+## Instalación y arranque
+
+### 1. Backend
 
 ```bash
-# 1. Clonar el repositorio
-git clone <url-del-repo>
 cd introducion
 
-# 2. Crear y activar entorno virtual
+# Crear y activar entorno virtual
 python -m venv env
-# Windows
-env\Scripts\activate
-# Linux/Mac
-source env/bin/activate
+env\Scripts\activate          # Windows
+source env/bin/activate       # Linux/Mac
 
-# 3. Instalar dependencias
+# Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Aplicar migraciones
+# Aplicar migraciones
 python manage.py migrate
 
-# 5. Crear superusuario (primer administrador)
+# Crear superusuario (primer administrador)
 python manage.py createsuperuser
 
-# 6. Iniciar servidor
+# Iniciar servidor (http://127.0.0.1:8000)
 python manage.py runserver
 ```
 
-> Accede a la documentación interactiva en: http://127.0.0.1:8000/api/docs/
+### 2. Frontend
+
+```bash
+cd mi-app
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo (http://localhost:5173)
+npm run dev
+```
+
+> El frontend se conecta al backend en `http://127.0.0.1:8000` por defecto.  
+> Para cambiar la URL crea un archivo `mi-app/.env` con `VITE_API_URL=http://tu-backend`.
 
 ---
 
@@ -52,12 +66,12 @@ python manage.py runserver
 | Rol | Cómo se asigna | Permisos |
 |-----|----------------|----------|
 | **Superusuario** | `createsuperuser` | Acceso total |
-| **Administrador** | Grupo `Administrador` (asignar desde `/admin/`) | CRUD completo en todos los endpoints |
-| **Empleado** | Grupo `Empleado` (asignado automáticamente al crear usuario) | Solo lectura de sus propios recursos y asignaciones |
+| **Administrador** | Grupo `Administrador` (desde `/admin/` o con `seed_test_user`) | CRUD completo |
+| **Empleado** | Asignado automáticamente al registrar usuario | Solo sus recursos y asignaciones |
 
 ---
 
-## Endpoints
+## Endpoints del API
 
 ### Autenticación — `/api/authentication/`
 
@@ -68,23 +82,26 @@ python manage.py runserver
 | `GET` | `/api/authentication/me/` | Autenticado | Perfil del usuario actual |
 | `POST` | `/api/authentication/register/` | Admin | Crear nuevo empleado |
 | `GET` | `/api/authentication/users/` | Admin | Listar empleados |
-| `GET` | `/api/authentication/users/{id}/` | Admin | Detalle de empleado |
-| `PUT/PATCH` | `/api/authentication/users/{id}/` | Admin | Actualizar empleado |
 | `DELETE` | `/api/authentication/users/{id}/` | Admin | Eliminar empleado |
 
 ### Recursos — `/api/resource/`
 
 | Método | URL | Acceso | Descripción |
 |--------|-----|--------|-------------|
-| `GET` | `/api/resource/resource-types/` | Autenticado | Listar tipos de recurso |
-| `POST` | `/api/resource/resource-types/` | Admin | Crear tipo de recurso |
+| `GET/POST` | `/api/resource/resource-types/` | Auth / Admin | Tipos de recurso |
 | `GET/PUT/PATCH/DELETE` | `/api/resource/resource-types/{id}/` | Admin | Gestionar tipo |
-| `GET` | `/api/resource/resources/` | Autenticado* | Listar recursos |
-| `POST` | `/api/resource/resources/` | Admin | Crear recurso |
+| `GET/POST` | `/api/resource/resources/` | Auth* / Admin | Recursos |
 | `GET/PUT/PATCH/DELETE` | `/api/resource/resources/{id}/` | Admin | Gestionar recurso |
-| `GET` | `/api/resource/assignments/` | Autenticado* | Listar asignaciones |
-| `POST` | `/api/resource/assignments/` | Admin | Crear asignación |
+| `GET/POST` | `/api/resource/assignments/` | Auth* / Admin | Asignaciones |
 | `GET/PUT/PATCH/DELETE` | `/api/resource/assignments/{id}/` | Admin | Gestionar asignación |
+
+### Mantenimiento — `/api/maintenance/`
+
+| Método | URL | Acceso | Descripción |
+|--------|-----|--------|-------------|
+| `GET/POST` | `/api/maintenance/maintenances/` | Admin | Mantenimientos |
+| `GET/PUT/PATCH/DELETE` | `/api/maintenance/maintenances/{id}/` | Admin | Gestionar mantenimiento |
+| `GET` | `/api/maintenance/maintenances/alerts/` | Admin | Alertas próximas (param: `?days=7`) |
 
 > \* Empleados solo ven sus propios recursos y asignaciones activas.
 
@@ -92,126 +109,16 @@ python manage.py runserver
 
 ## Autenticación con JWT
 
-Todas las peticiones a endpoints protegidos requieren el header:
-
-```
-Authorization: Bearer <access_token>
-```
-
-**1. Obtener tokens:**
 ```http
 POST /api/authentication/login/
 Content-Type: application/json
 
-{
-  "username": "usuario",
-  "password": "contraseña"
-}
+{ "username": "usuario", "password": "contraseña" }
 ```
 
-**Respuesta:**
-```json
-{
-  "access": "eyJ...",
-  "refresh": "eyJ..."
-}
+Luego incluir en cada petición protegida:
 ```
-
-**2. Renovar token:**
-```http
-POST /api/authentication/refresh/
-Content-Type: application/json
-
-{
-  "refresh": "eyJ..."
-}
-```
-
----
-
-## Ejemplos de uso
-
-### Crear un empleado (admin)
-```http
-POST /api/authentication/register/
-Authorization: Bearer <token_admin>
-Content-Type: application/json
-
-{
-  "username": "jperez",
-  "password": "Pass1234!",
-  "email": "jperez@empresa.com",
-  "first_name": "Juan",
-  "last_name": "Pérez",
-  "cargo": "Docente",
-  "area": "Sistemas"
-}
-```
-
-### Crear un tipo de recurso (admin)
-```http
-POST /api/resource/resource-types/
-Authorization: Bearer <token_admin>
-Content-Type: application/json
-
-{
-  "name": "Laptop",
-  "description": "Computadora portátil",
-  "category": "PHYSICAL"
-}
-```
-
-Categorías disponibles: `PHYSICAL`, `DIGITAL`, `SPACE`
-
-### Crear un recurso (admin)
-```http
-POST /api/resource/resources/
-Authorization: Bearer <token_admin>
-Content-Type: application/json
-
-{
-  "name": "MacBook Pro",
-  "code": "LAP-001",
-  "type": 1,
-  "technical_description": "Apple M2, 16GB RAM",
-  "acquisition_date": "2024-01-15",
-  "value": "5000000.00",
-  "responsible_area": "TI"
-}
-```
-
-> El estado inicial siempre es `AVAILABLE` sin importar lo que se envíe.
-
-### Asignar un recurso a un empleado (admin)
-```http
-POST /api/resource/assignments/
-Authorization: Bearer <token_admin>
-Content-Type: application/json
-
-{
-  "resource": 1,
-  "assignee": 3,
-  "start_date": "2025-03-22",
-  "expected_return_date": "2025-04-22",
-  "notes": "Para uso en proyecto de investigación"
-}
-```
-
-### Registrar devolución (admin)
-```http
-PATCH /api/resource/assignments/1/
-Authorization: Bearer <token_admin>
-Content-Type: application/json
-
-{
-  "returned_at": "2025-04-10"
-}
-```
-
-### Ver mis recursos asignados (empleado)
-```http
-GET /api/resource/resources/
-Authorization: Bearer <token_empleado>
+Authorization: Bearer <access_token>
 ```
 
 ---
@@ -222,16 +129,20 @@ Authorization: Bearer <token_empleado>
 |--------|-------|-------------|
 | Disponible | `AVAILABLE` | Listo para asignar |
 | Asignado | `ASSIGNED` | Tiene asignación activa |
-| En mantenimiento | `MAINTENANCE` | No disponible, no se puede eliminar |
+| En mantenimiento | `MAINTENANCE` | No disponible |
 | Dado de baja | `RETIRED` | Fuera de servicio |
 
-> **Regla:** No se puede eliminar un recurso con estado `ASSIGNED` o `MAINTENANCE`.
+> No se puede eliminar un recurso con estado `ASSIGNED` o `MAINTENANCE`.
 
 ---
 
 ## Pruebas
 
+### Pruebas unitarias del backend
+
 ```bash
+cd introducion
+
 # Ejecutar todas las pruebas
 python manage.py test authentication resource
 
@@ -239,18 +150,62 @@ python manage.py test authentication resource
 python manage.py test authentication resource --verbosity=2
 ```
 
-**Cobertura: 54 pruebas** distribuidas en:
+**54 pruebas** distribuidas en:
 
-| Módulo | Clases de prueba | Pruebas |
-|--------|-----------------|---------|
-| `authentication` | Modelo, Permiso, Login, Me, Registro, CRUD empleados | 19 |
-| `resource` | Modelo recurso, Tipo, Serializer recurso, Serializer asignación, API tipos, API recursos, API asignaciones | 35 |
+| Módulo | Pruebas |
+|--------|---------|
+| `authentication` | 19 |
+| `resource` | 35 |
 
 ---
 
-## Documentación interactiva
+### Pruebas de interfaz (Selenium)
 
-Disponible en desarrollo:
+Las pruebas UI están en `introducion/test/ui/` y usan un **usuario de prueba dedicado** creado por el seeder.
+
+#### 1. Instalar dependencias de testing
+
+```bash
+cd introducion
+pip install pytest selenium webdriver-manager
+```
+
+#### 2. Crear el usuario de prueba (seeder)
+
+```bash
+python manage.py seed_test_user
+```
+
+Crea (o actualiza) el usuario `test_selenium` con rol Administrador. Es **idempotente**: se puede ejecutar múltiples veces sin error.
+
+| Campo | Valor |
+|-------|-------|
+| Usuario | `test_selenium` |
+| Contraseña | `TestUI_2024!` |
+| Rol | Administrador |
+
+#### 3. Ejecutar las pruebas UI
+
+Con el backend (`runserver`) y el frontend (`npm run dev`) corriendo:
+
+```bash
+cd introducion
+pytest test/ui/ -v
+```
+
+El `conftest.py` llama automáticamente al seeder antes de abrir el navegador, por lo que el paso 2 es opcional si ya se ejecutó antes.
+
+#### Pruebas disponibles
+
+| Archivo | Test | Descripción |
+|---------|------|-------------|
+| `test_auth.py` | `test_login_flow` | Login con usuario de prueba y verificación de redirección |
+| `test_resources.py` | `test_crear_tipo_recurso` | Crear un tipo de recurso desde el modal |
+| `test_resources.py` | `test_crear_recurso_nuevo` | Crear un recurso desde el modal |
+
+---
+
+## Documentación interactiva (backend)
 
 - **Swagger UI:** http://127.0.0.1:8000/api/docs/
 - **ReDoc:** http://127.0.0.1:8000/api/redoc/
@@ -261,20 +216,31 @@ Disponible en desarrollo:
 ## Estructura del proyecto
 
 ```
-introducion/
-├── authentication/          # App de usuarios y autenticación
-│   ├── models.py            # CustomUser (cargo, area)
-│   ├── serializers.py       # UserSerializer, RegisterSerializer
-│   ├── views.py             # Login, Me, CRUD empleados
-│   ├── permissions.py       # IsAdministrador
-│   ├── signals.py           # Asigna grupo Empleado al crear usuario
-│   └── urls.py
-├── resource/                # App de gestión de recursos
-│   ├── models.py            # ResourceType, Resource, Assignment
-│   ├── serializers.py       # Serializers con validaciones de negocio
-│   ├── views.py             # ViewSets con filtrado por rol
-│   └── urls.py
-└── introducion/             # Configuración del proyecto
-    ├── settings.py
-    └── urls.py
+proyectoaulaTendencias20261/
+├── introducion/                  # Backend Django
+│   ├── authentication/           # Usuarios y autenticación JWT
+│   │   ├── management/
+│   │   │   └── commands/
+│   │   │       └── seed_test_user.py   # Seeder usuario de prueba
+│   │   ├── models.py             # CustomUser (cargo, area)
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── permissions.py        # IsAdministrador
+│   │   └── signals.py            # Auto-asigna grupo Empleado
+│   ├── resource/                 # Recursos y asignaciones
+│   ├── maintenance/              # Mantenimientos y alertas
+│   ├── test/
+│   │   └── ui/                   # Pruebas Selenium
+│   │       ├── conftest.py       # Driver + seeder automático
+│   │       ├── test_auth.py
+│   │       └── test_resources.py
+│   └── manage.py
+└── mi-app/                       # Frontend React
+    ├── src/
+    │   ├── features/             # Módulos por dominio (auth, recursos, ...)
+    │   ├── pages/                # Páginas de la aplicación
+    │   ├── components/           # Componentes compartidos (Modal, Layout...)
+    │   ├── routes/               # Definición de rutas
+    │   └── store/                # Estado global (Zustand)
+    └── vite.config.ts
 ```

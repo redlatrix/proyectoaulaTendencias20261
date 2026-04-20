@@ -8,7 +8,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'cargo', 'area', 'groups')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'cargo', 'area', 'groups', 'is_superuser')
+        read_only_fields = ('groups', 'is_superuser')
 
 
 class RegisterSerializer(serializers.ModelSerializer):
