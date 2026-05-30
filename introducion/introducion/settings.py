@@ -11,10 +11,16 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from datetime import timedelta
+import os
 from pathlib import Path
+import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -24,9 +30,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-+cem@zj1@cry8b@7n2tsmcg^@+y^&61xk_q7b5i^ejce1zpzbp'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*.vercel.app']
+ALLOWED_HOSTS = [
+    '.vercel.app',
+    'localhost',
+    '127.0.0.1',
+]
+
+
 
 
 # Application definition
@@ -89,11 +101,12 @@ SPECTACULAR_SETTINGS = {
 }
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -119,17 +132,36 @@ TEMPLATES = [
 WSGI_APPLICATION = 'introducion.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# ==============================================================================
+# DATABASE CONFIGURATION
+# ==============================================================================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+# Verificamos si estamos corriendo en el entorno de Vercel de forma más segura
+IS_VERCEL = 'VERCEL' in os.environ or 'VERCEL_URL' in os.environ
+
+if IS_VERCEL:
+    if not DATABASE_URL:
+        raise ImproperlyConfigured('CRITICAL: DATABASE_URL variable is missing in Vercel environment.')
+    
+    # En Vercel: Forzamos el uso estricto de la base de datos externa externa (PostgreSQL, etc.)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
     }
-}
-
-
+else:
+    # Local/Desarrollo: Caemos de forma segura en SQLite local
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -165,9 +197,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# CORS
+# if 'VERCEL_URL' in os.environ:
+#     ALLOWED_HOSTS.append(os.environ.get('VERCEL_URL'))
+#     ALLOWED_HOSTS.append(f".{os.environ.get('VERCEL_URL')}")
+
 CORS_ALLOWED_ORIGINS = [
+    'https://frontend-tdea-tendencias.onrender.com',
+    'https://frontend-tdea-tendencias-mbhh.onrender.com',
+    'https://frontend-tdea-tendencias.vercel.app',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
+
+CORS_ALLOW_CREDENTIALS = True

@@ -1,0 +1,33 @@
+# Archivo de configuración para despliegues automáticos en Render (render.yaml)
+# Para más información, visita: https://render.com/docs/yaml-spec
+
+services:
+  # Ejemplo de un servicio Web (Frontend / Fullstack Node.js con Yarn)
+  - type: web
+    name: frontend-tdea-tendencias
+    runtime: node
+    repo: https://github.com/usuario/frontend-tdea-tendencias  # Cambia por la URL de tu repositorio de GitHub o GitLab
+    plan: starter                             # Opciones: free, starter, standard, etc.
+    buildCommand: npm ci && npm run build      # Comando para instalar dependencias y compilar
+    startCommand: node server.mjs              # Sirve el frontend y proxifica /api al backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: VITE_API_URL
+        value: ""
+      - key: API_PROXY_TARGET
+        value: https://proyectoaula-tendencias20261.vercel.app
+
+  # Ejemplo de un servicio de Base de Datos (Opcional, descomentar si es necesario)
+  # databases:
+  #   - name: mi-base-datos
+  #     plan: starter
+
+  # Ejemplo de una API en segundo plano / Worker (Opcional)
+  # - type: worker
+  #   name: mi-worker-yarn
+  #   runtime: node
+  #   buildCommand: yarn install
+  #   startCommand: yarn worker:start
